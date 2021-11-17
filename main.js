@@ -16,15 +16,11 @@ var app = http.createServer((req, res) => {
             list_html += `<li><a href="/?id=${file}">${file}</a></li>`;
         });
         list_html += '</ol>';
+        var template;
         if (title == undefined) {
             title = 'front page';
             content = 'Welcome!';
-        }
-        else {
-            content = fs.readFileSync(`data/${title}`, 'utf8');
-        }
-
-        var template = `
+            template = `
             <!DOCTYPE html>
             <html>
                 <head>
@@ -39,7 +35,32 @@ var app = http.createServer((req, res) => {
                     <p>${content}</p>
                 </body>
             </html>
-            `
+            `;
+        }
+        else {
+            content = fs.readFileSync(`data/${title}`, 'utf8');
+            template = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Web-NodeJs:${title}</title>
+                    <meta charset="utf-8">
+                </head>
+                <body>
+                    <h1><a href="/">Web-NodeJs</a></h1>
+                    ${list_html}
+                    <p>
+                        <a href="/create">create</a>
+                        <a href="/update?id=${title}">update</a>
+                    </p>
+                    <h2>${title}</h2>
+                    <p>${content}</p>
+                </body>
+            </html>
+            `;
+        }
+
+        
         res.writeHead(200);
         res.end(template);
     }
@@ -72,6 +93,43 @@ var app = http.createServer((req, res) => {
         req.on('end', () => {
             var post = qs.parse(body);
             fs.writeFileSync(`data/${post.title}`, post.content, 'utf8');
+            res.writeHead(302, { Location: '/' });
+            res.end();
+        })
+    }
+    else if (pathname == '/update') {
+        var title = queryData.id;
+        var content = fs.readFileSync(`data/${title}`, 'utf8');
+        var template = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Web-NodeJs:update</title>
+                    <meta charset="utf-8">
+                </head>
+                <body>
+                    <h1><a href="/">Web-NodeJs</a></h1>
+                    <form action="/update_doc" method="post">
+                        <input type="hidden" name="id" value="${title}">
+                        <p><input type="text" name="title" value="${title}"></p>
+                        <p><textarea name="content">${content}</textarea></p>
+                        <p><input type="submit"></p>
+                    </form>
+                </body>
+            </html>
+            `
+        res.writeHead(200);
+        res.end(template);
+    }
+    else if (pathname == '/update_doc') {
+        var body = '';
+        req.on('data', (data) => {
+            body += data;
+        });
+        req.on('end', () => {
+            var post = qs.parse(body);
+            fs.writeFileSync(`data/${post.id}`, post.content, 'utf8');
+            fs.renameSync(`data/${post.id}`, `data/${post.title}`);
             res.writeHead(302, { Location: '/' });
             res.end();
         })
