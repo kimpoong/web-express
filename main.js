@@ -52,6 +52,10 @@ var app = http.createServer((req, res) => {
                     <p>
                         <a href="/create">create</a>
                         <a href="/update?id=${title}">update</a>
+                        <form action="/delete" method="post">
+                            <input type="hidden" name="id" value="${title}">
+                            <input type="submit" value="delete">
+                        </form>
                     </p>
                     <h2>${title}</h2>
                     <p>${content}</p>
@@ -130,6 +134,18 @@ var app = http.createServer((req, res) => {
             var post = qs.parse(body);
             fs.writeFileSync(`data/${post.id}`, post.content, 'utf8');
             fs.renameSync(`data/${post.id}`, `data/${post.title}`);
+            res.writeHead(302, { Location: '/' });
+            res.end();
+        })
+    }
+    else if (pathname == '/delete') {
+        var body = '';
+        req.on('data', (data) => {
+            body += data;
+        });
+        req.on('end', () => {
+            var post = qs.parse(body);
+            fs.unlinkSync(`data/${post.id}`);
             res.writeHead(302, { Location: '/' });
             res.end();
         })
