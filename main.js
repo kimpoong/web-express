@@ -1,160 +1,143 @@
-var http = require('http');
-var fs = require('fs');
-var url = require('url');
-var qs = require('querystring');
+const express = require('express')
+const fs = require('fs')
+const bodyParser = require('body-parser')
+const compression = require('compression')
 
-var app = http.createServer((req, res) => {
-    var queryData = url.parse(req.url, true).query;
-    var pathname = url.parse(req.url, true).pathname;
-    
-    if (pathname == '/') {
-        var title = queryData.id;
-        var content;
-        var filelist = fs.readdirSync("./data");
-        var list_html = '<ol>';
-        filelist.forEach((file) => {
-            list_html += `<li><a href="/?id=${file}">${file}</a></li>`;
-        });
-        list_html += '</ol>';
-        var template;
-        if (title == undefined) {
-            title = 'front page';
-            content = 'Welcome!';
-            template = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Web-NodeJs:${title}</title>
-                    <meta charset="utf-8">
-                </head>
-                <body>
-                    <h1><a href="/">Web-NodeJs</a></h1>
-                    ${list_html}
-                    <p><a href="/create">create</a></p>
-                    <h2>${title}</h2>
-                    <p>${content}</p>
-                </body>
-            </html>
-            `;
-        }
-        else {
-            content = fs.readFileSync(`data/${title}`, 'utf8');
-            template = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Web-NodeJs:${title}</title>
-                    <meta charset="utf-8">
-                </head>
-                <body>
-                    <h1><a href="/">Web-NodeJs</a></h1>
-                    ${list_html}
-                    <p>
-                        <a href="/create">create</a>
-                        <a href="/update?id=${title}">update</a>
-                        <form action="/delete" method="post">
-                            <input type="hidden" name="id" value="${title}">
-                            <input type="submit" value="delete">
-                        </form>
-                    </p>
-                    <h2>${title}</h2>
-                    <p>${content}</p>
-                </body>
-            </html>
-            `;
-        }
+const app = express()
+const port = 3000
 
-        
-        res.writeHead(200);
-        res.end(template);
-    }
-    else if (pathname == '/create') {
-        var template = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Web-NodeJs:create</title>
-                    <meta charset="utf-8">
-                </head>
-                <body>
-                    <h1><a href="/">Web-NodeJs</a></h1>
-                    <form action="/create_doc" method="post">
-                        <p><input type="text" name="title" placeholder="title"></p>
-                        <p><textarea name="content" placeholder="content"></textarea></p>
-                        <p><input type="submit"></p>
-                    </form>
-                </body>
-            </html>
-            `
-        res.writeHead(200);
-        res.end(template);
-    }
-    else if (pathname == '/create_doc') {
-        var body = '';
-        req.on('data', (data) => {
-            body += data;
-        });
-        req.on('end', () => {
-            var post = qs.parse(body);
-            fs.writeFileSync(`data/${post.title}`, post.content, 'utf8');
-            res.writeHead(302, { Location: '/' });
-            res.end();
-        })
-    }
-    else if (pathname == '/update') {
-        var title = queryData.id;
-        var content = fs.readFileSync(`data/${title}`, 'utf8');
-        var template = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <title>Web-NodeJs:update</title>
-                    <meta charset="utf-8">
-                </head>
-                <body>
-                    <h1><a href="/">Web-NodeJs</a></h1>
-                    <form action="/update_doc" method="post">
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(compression())
+
+app.get('/', (req, res) => {
+    var file_list = fs.readdirSync("./page")
+    var list_html = '<ol>'
+    file_list.forEach((page_id) => {
+        console.log(page_id)
+        list_html += `<li><a href="/page/${page_id}">${page_id}</a></li>`
+    })
+    list_html += '</ol>'
+    var title = 'front page'
+    var content = 'Welcome!'
+    var template = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Web-NodeJs:${title}</title>
+                <meta charset="utf-8">
+            </head>
+            <body>
+                <h1><a href="/">Web-NodeJs</a></h1>
+                ${list_html}
+                <p><a href="/create">create</a></p>
+                <h2>${title}</h2>
+                <p>${content}</p>
+            </body>
+        </html>
+        `
+    res.send(template)
+})
+
+app.get('/page/:pageId', (req, res) => {
+    var file_list = fs.readdirSync("./page")
+    var list_html = '<ol>'
+    file_list.forEach((page_id) => {
+        console.log(page_id)
+        list_html += `<li><a href="/page/${page_id}">${page_id}</a></li>`
+    })
+    list_html += '</ol>'
+    var title = req.params.pageId
+    var content = fs.readFileSync(`./page/${title}`, 'utf8')
+    var template = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Web-NodeJs:${title}</title>
+                <meta charset="utf-8">
+            </head>
+            <body>
+                <h1><a href="/">Web-NodeJs</a></h1>
+                ${list_html}
+                <p>
+                    <a href="/create">create</a>
+                    <a href="/update/${title}">update</a>
+                    <form action="/delete" method="post">
                         <input type="hidden" name="id" value="${title}">
-                        <p><input type="text" name="title" value="${title}"></p>
-                        <p><textarea name="content">${content}</textarea></p>
-                        <p><input type="submit"></p>
+                        <input type="submit" value="delete">
                     </form>
-                </body>
-            </html>
-            `
-        res.writeHead(200);
-        res.end(template);
-    }
-    else if (pathname == '/update_doc') {
-        var body = '';
-        req.on('data', (data) => {
-            body += data;
-        });
-        req.on('end', () => {
-            var post = qs.parse(body);
-            fs.writeFileSync(`data/${post.id}`, post.content, 'utf8');
-            fs.renameSync(`data/${post.id}`, `data/${post.title}`);
-            res.writeHead(302, { Location: '/' });
-            res.end();
-        })
-    }
-    else if (pathname == '/delete') {
-        var body = '';
-        req.on('data', (data) => {
-            body += data;
-        });
-        req.on('end', () => {
-            var post = qs.parse(body);
-            fs.unlinkSync(`data/${post.id}`);
-            res.writeHead(302, { Location: '/' });
-            res.end();
-        })
-    }
-    else {
-        res.writeHead(404);
-        res.end('not found');
-    }
-    
-});
+                </p>
+                <h2>${title}</h2>
+                <p>${content}</p>
+            </body>
+        </html>
+        `
+    res.send(template)
+})
 
-app.listen(3000);
+app.get('/create', (req, res) => {
+    var template = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Web-NodeJs:create</title>
+                <meta charset="utf-8">
+            </head>
+            <body>
+                <h1><a href="/">Web-NodeJs</a></h1>
+                <form action="/create_doc" method="post">
+                    <p><input type="text" name="title" placeholder="title"></p>
+                    <p><textarea name="content" placeholder="content"></textarea></p>
+                    <p><input type="submit"></p>
+                </form>
+            </body>
+        </html>
+        `
+    res.send(template)
+})
+
+app.post('/create_doc', (req, res) => {
+    var post = req.body;
+    fs.writeFileSync(`page/${post.title}`, post.content, 'utf8');
+    res.redirect('/');
+})
+
+app.get('/update/:pageId', (req, res) => {
+    var title = req.params.pageId
+    var content = fs.readFileSync(`page/${title}`, 'utf8')
+    var template = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Web-NodeJs:update</title>
+                <meta charset="utf-8">
+            </head>
+            <body>
+                <h1><a href="/">Web-NodeJs</a></h1>
+                <form action="/update_doc" method="post">
+                    <input type="hidden" name="id" value="${title}">
+                    <p><input type="text" name="title" value="${title}"></p>
+                    <p><textarea name="content">${content}</textarea></p>
+                    <p><input type="submit"></p>
+                </form>
+            </body>
+        </html>
+        `
+    res.send(template)
+})
+
+app.post('/update_doc', (req, res) => {
+    var post = req.body
+    fs.writeFileSync(`page/${post.id}`, post.content, 'utf8')
+    fs.renameSync(`page/${post.id}`, `page/${post.title}`)
+    res.redirect('/')
+})
+
+app.post('/delete', (req, res) => {
+    var post = req.body
+    fs.unlinkSync(`page/${post.id}`)
+    res.redirect('/')
+})
+
+app.listen(port, () => {
+
+})
