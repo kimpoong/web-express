@@ -8,12 +8,17 @@ const port = 3000
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(compression())
+app.get('*', (req, res, next) => {
+    fs.readdir("./page", (err, file_list) => {
+        req.file_list = file_list
+        next()
+    })
+})
 
 app.get('/', (req, res) => {
-    var file_list = fs.readdirSync("./page")
+    var file_list = req.file_list
     var list_html = '<ol>'
     file_list.forEach((page_id) => {
-        console.log(page_id)
         list_html += `<li><a href="/page/${page_id}">${page_id}</a></li>`
     })
     list_html += '</ol>'
@@ -35,14 +40,13 @@ app.get('/', (req, res) => {
             </body>
         </html>
         `
-    res.send(template)
+    res.status(200).send(template)
 })
 
 app.get('/page/:pageId', (req, res) => {
-    var file_list = fs.readdirSync("./page")
+    var file_list = req.file_list
     var list_html = '<ol>'
     file_list.forEach((page_id) => {
-        console.log(page_id)
         list_html += `<li><a href="/page/${page_id}">${page_id}</a></li>`
     })
     list_html += '</ol>'
@@ -71,7 +75,7 @@ app.get('/page/:pageId', (req, res) => {
             </body>
         </html>
         `
-    res.send(template)
+    res.status(200).send(template)
 })
 
 app.get('/create', (req, res) => {
@@ -92,13 +96,13 @@ app.get('/create', (req, res) => {
             </body>
         </html>
         `
-    res.send(template)
+    res.status(200).send(template)
 })
 
 app.post('/create_doc', (req, res) => {
     var post = req.body;
     fs.writeFileSync(`page/${post.title}`, post.content, 'utf8');
-    res.redirect('/');
+    res.status(302).redirect('/');
 })
 
 app.get('/update/:pageId', (req, res) => {
@@ -122,20 +126,29 @@ app.get('/update/:pageId', (req, res) => {
             </body>
         </html>
         `
-    res.send(template)
+    res.status(200).send(template)
 })
 
 app.post('/update_doc', (req, res) => {
     var post = req.body
     fs.writeFileSync(`page/${post.id}`, post.content, 'utf8')
     fs.renameSync(`page/${post.id}`, `page/${post.title}`)
-    res.redirect('/')
+    res.status(302).redirect('/')
 })
 
 app.post('/delete', (req, res) => {
     var post = req.body
     fs.unlinkSync(`page/${post.id}`)
-    res.redirect('/')
+    res.status(302).redirect('/')
+})
+
+app.use(function (req, res, next) {
+    res.status(404).send('Sorry cant find that!')
+})
+
+app.use(function (err, req, res, next) {
+    console.error(err.stack)
+    res.status(500).send('Something broke!')
 })
 
 app.listen(port, () => {
